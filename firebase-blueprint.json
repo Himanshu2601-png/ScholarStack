@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A student user of the resource-sharing platform.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique identifier of the user (matches Firebase Auth UID)."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the student."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the student."
+        },
+        "department": {
+          "type": "string",
+          "description": "The department the student belongs to."
+        },
+        "semester": {
+          "type": "number",
+          "description": "The current semester of the student."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user profile was created."
+        }
+      },
+      "required": ["uid", "name", "email", "department", "semester", "createdAt"]
+    },
+    "File": {
+      "title": "File",
+      "description": "A study resource file uploaded by a student.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique identifier of the file document."
+        },
+        "uploader_id": {
+          "type": "string",
+          "description": "The UID of the user who uploaded the file."
+        },
+        "uploader_name": {
+          "type": "string",
+          "description": "The name of the user who uploaded the file."
+        },
+        "file_name": {
+          "type": "string",
+          "description": "The original name of the uploaded file."
+        },
+        "file_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The download URL of the file from Firebase Storage."
+        },
+        "file_type": {
+          "type": "string",
+          "description": "The MIME type or extension of the file."
+        },
+        "department": {
+          "type": "string",
+          "description": "The department this file is relevant for."
+        },
+        "semester": {
+          "type": "number",
+          "description": "The semester this file is relevant for."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject or course this file is for."
+        },
+        "upload_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the file was uploaded."
+        }
+      },
+      "required": ["id", "uploader_id", "uploader_name", "file_name", "file_url", "file_type", "department", "semester", "subject", "upload_date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles."
+    },
+    "/files/{fileId}": {
+      "schema": {
+        "$ref": "#/entities/File"
+      },
+      "description": "Stores metadata for uploaded study resources."
+    }
+  }
+}
