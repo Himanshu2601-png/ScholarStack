@@ -58,24 +58,36 @@ export default function Upload() {
     setError('');
 
     try {
+      console.log('Starting upload process...');
+      console.log('File details:', { name: file.name, size: file.size, type: file.type });
+      console.log('Form data:', { department, semester, subject });
+      console.log('User details:', { uid: user.uid, email: user.email });
+
       const fileRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+      console.log('Storage reference created:', fileRef.fullPath);
+      
       const uploadTask = uploadBytesResumable(fileRef, file);
 
       uploadTask.on(
         'state_changed',
         (snapshot) => {
           const prog = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log(`Upload progress: ${prog.toFixed(2)}% (${snapshot.bytesTransferred} / ${snapshot.totalBytes} bytes)`);
           setProgress(prog);
         },
         (err) => {
+          console.error('Firebase Storage Upload Error:', err);
           setError(err.message || 'An error occurred during upload.');
           setUploading(false);
         },
         async () => {
+          console.log('File successfully uploaded to Firebase Storage. Fetching download URL...');
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            console.log('Download URL retrieved:', downloadURL);
             
-            await addDoc(collection(db, 'files'), {
+            console.log('Saving metadata to Firestore...');
+            const docRef = await addDoc(collection(db, 'files'), {
               uploader_name: user.displayName || user.email?.split('@')[0] || 'Anonymous',
               uploader_id: user.uid,
               file_name: file.name,
@@ -86,16 +98,19 @@ export default function Upload() {
               subject,
               upload_date: new Date().toISOString()
             });
+            console.log('Metadata successfully saved to Firestore with ID:', docRef.id);
 
             setUploading(false);
             navigate('/');
           } catch (firestoreErr: any) {
+            console.error('Firestore Metadata Save Error:', firestoreErr);
             setError(firestoreErr.message || 'Failed to save file metadata.');
             setUploading(false);
           }
         }
       );
     } catch (err: any) {
+      console.error('General Upload Error:', err);
       setError(err.message || 'An error occurred during upload.');
       setUploading(false);
     }
