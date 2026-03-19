@@ -35,7 +35,10 @@ export default function Upload() {
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/vnd.ms-powerpoint': ['.ppt'],
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+      'application/zip': ['.zip'],
+      'application/x-zip-compressed': ['.zip'],
+      'application/x-rar-compressed': ['.rar']
     }
   } as any);
 
@@ -128,7 +131,7 @@ export default function Upload() {
             <div className="space-y-2">
               <UploadIcon className="mx-auto h-10 w-10 text-gray-400" />
               <p className="text-gray-600 font-medium">Drag & drop a file here, or click to select</p>
-              <p className="text-xs text-gray-500">Supported formats: PDF, DOCX, PPTX</p>
+              <p className="text-xs text-gray-500">Supported formats: PDF, DOCX, PPTX, ZIP</p>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-3">
