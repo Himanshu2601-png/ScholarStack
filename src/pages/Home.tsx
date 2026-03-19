@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, FileText } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import FileCard, { FileData } from '../components/FileCard';
 
 export default function Home() {
@@ -10,9 +12,21 @@ export default function Home() {
   const [filterSem, setFilterSem] = useState('');
 
   useEffect(() => {
-    // Firestore removed for now
-    setFiles([]);
-    setLoading(false);
+    const q = query(collection(db, 'files'), orderBy('upload_date', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const filesData: FileData[] = [];
+      snapshot.forEach((doc) => {
+        filesData.push({ id: doc.id, ...doc.data() } as FileData);
+      });
+      setFiles(filesData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching files:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const filteredFiles = files.filter(file => {

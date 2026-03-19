@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { useAuth } from '../context/AuthContext';
 import { Upload as UploadIcon, File, X } from 'lucide-react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
+import { db, storage } from '../firebase';
 
 export default function Upload() {
   const { user } = useAuth();
@@ -52,22 +55,43 @@ export default function Upload() {
     setError('');
 
     try {
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setProgress(p => {
-          if (p >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return p + 10;
-        });
-      }, 100);
+      const fileRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(fileRef, file);
 
-      setTimeout(() => {
-        clearInterval(interval);
-        setUploading(false);
-        navigate('/');
-      }, 1000);
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const prog = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setProgress(prog);
+        },
+        (err) => {
+          setError(err.message || 'An error occurred during upload.');
+          setUploading(false);
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            
+            await addDoc(collection(db, 'files'), {
+              uploader_name: user.displayName || user.email?.split('@')[0] || 'Anonymous',
+              uploader_id: user.uid,
+              file_name: file.name,
+              file_url: downloadURL,
+              file_type: file.type || 'application/octet-stream',
+              department,
+              semester,
+              subject,
+              upload_date: new Date().toISOString()
+            });
+
+            setUploading(false);
+            navigate('/');
+          } catch (firestoreErr: any) {
+            setError(firestoreErr.message || 'Failed to save file metadata.');
+            setUploading(false);
+          }
+        }
+      );
     } catch (err: any) {
       setError(err.message || 'An error occurred during upload.');
       setUploading(false);
