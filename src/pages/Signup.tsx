@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { BookOpen } from 'lucide-react';
 
 export default function Signup() {
@@ -21,6 +22,19 @@ export default function Signup() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update profile with name
+      await updateProfile(userCredential.user, { displayName: name });
+
+      // Save user data to Firestore to comply with firestore.rules
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        name: name,
+        email: email,
+        department: department,
+        semester: semester,
+        createdAt: new Date().toISOString()
+      });
       
       // Send verification email
       await sendEmailVerification(userCredential.user);

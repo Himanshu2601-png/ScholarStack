@@ -1,8 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, FileText } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import FileCard, { FileData } from '../components/FileCard';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export default function Home() {
   const [files, setFiles] = useState<FileData[]>([]);
@@ -24,6 +75,7 @@ export default function Home() {
     }, (error) => {
       console.error("Error fetching files:", error);
       setLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'files');
     });
 
     return () => unsubscribe();

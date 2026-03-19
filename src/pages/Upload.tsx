@@ -4,8 +4,59 @@ import { useDropzone } from 'react-dropzone';
 import { useAuth } from '../context/AuthContext';
 import { Upload as UploadIcon, File, X } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc } from 'firebase/firestore';
-import { db, storage } from '../firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { db, storage, auth } from '../firebase';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export default function Upload() {
   const { user } = useAuth();
@@ -49,6 +100,11 @@ export default function Upload() {
       return;
     }
 
+    if (!department.trim()) {
+      setError('Please select a department.');
+      return;
+    }
+
     if (!subject.trim()) {
       setError('Please enter a subject name.');
       return;
@@ -87,7 +143,9 @@ export default function Upload() {
             console.log('Download URL retrieved:', downloadURL);
             
             console.log('Saving metadata to Firestore...');
-            const docRef = await addDoc(collection(db, 'files'), {
+            const newDocRef = doc(collection(db, 'files'));
+            await setDoc(newDocRef, {
+              id: newDocRef.id,
               uploader_name: user.displayName || user.email?.split('@')[0] || 'Anonymous',
               uploader_id: user.uid,
               file_name: file.name,
@@ -98,7 +156,7 @@ export default function Upload() {
               subject,
               upload_date: new Date().toISOString()
             });
-            console.log('Metadata successfully saved to Firestore with ID:', docRef.id);
+            console.log('Metadata successfully saved to Firestore with ID:', newDocRef.id);
 
             setUploading(false);
             navigate('/');
@@ -106,6 +164,7 @@ export default function Upload() {
             console.error('Firestore Metadata Save Error:', firestoreErr);
             setError(firestoreErr.message || 'Failed to save file metadata.');
             setUploading(false);
+            handleFirestoreError(firestoreErr, OperationType.CREATE, 'files');
           }
         }
       );
